@@ -39,6 +39,14 @@ public interface CoordinateOffsetAdapter {
     int getMinimumOffsetMultiple();
 
     /**
+     * Whether coordinate obfuscation should apply for this player (e.g. per-player preference from /config).
+     * When {@code false}, offsets are bypassed and real coordinates are shown.
+     */
+    default boolean shouldObfuscateCoordinates(OffsetPlayer player) {
+        return true;
+    }
+
+    /**
      * Assert that the current thread is the main server thread, or throw an {@link IllegalStateException} if it is not.
      *
      * @param methodName Name of the method being called. Printed in the exception message for help tracking.

@@ -3,6 +3,8 @@ package com.jtprince.coordinateoffset.paper;
 import com.jtprince.coordinateoffset.CoordinateOffsetCore;
 import com.jtprince.coordinateoffset.CoordinateOffsetPermission;
 import com.jtprince.coordinateoffset.paper.adapter.PaperAdapter;
+import com.jtprince.coordinateoffset.paper.anarchy.AnarchyCorePlayerConfigIntegration;
+import com.jtprince.coordinateoffset.paper.anarchy.PlayerConfigToggleWatcher;
 import com.jtprince.coordinateoffset.paper.lib.org.geysermc.hurricane.CollisionFix;
 import org.bukkit.Bukkit;
 import org.bukkit.permissions.Permission;
@@ -22,17 +24,24 @@ public final class CoordinateOffsetPaperPlugin extends JavaPlugin {
     private @Nullable WorldBorderObfuscator worldBorderObfuscator;
     private @Nullable PacketOffsetAdapter packetOffsetAdapter;
     private @Nullable CollisionFix collisionFix;
+    private @Nullable AnarchyCorePlayerConfigIntegration playerConfigIntegration;
+    private @Nullable PlayerConfigToggleWatcher playerConfigToggleWatcher;
+    private boolean anarchyCorePostRegisterSyncDone;
 
     @Override
     public void onEnable() {
         instance = this;
 
-        adapter = new PaperAdapter(this);
+        playerConfigIntegration = new AnarchyCorePlayerConfigIntegration(this);
+        adapter = new PaperAdapter(this, playerConfigIntegration);
         core = CoordinateOffsetCore.bootstrap(adapter);
 
         worldBorderObfuscator = new WorldBorderObfuscator(this);
 
-        new BukkitEventListener(this, core, worldBorderObfuscator).registerListeners();
+        playerConfigToggleWatcher = new PlayerConfigToggleWatcher(this, core, playerConfigIntegration);
+        BukkitEventListener eventListener = new BukkitEventListener(this, core, worldBorderObfuscator);
+        eventListener.setPlayerConfigToggleWatcher(playerConfigToggleWatcher);
+        eventListener.registerListeners();
 
         new PaperOffsetCommand(this, core).registerCommands();
 
@@ -48,6 +57,8 @@ public final class CoordinateOffsetPaperPlugin extends JavaPlugin {
                 p.getChildren().stream().collect(Collectors.toMap(p1 -> p1.node, p1 -> true))));
         }
 
+        scheduleAnarchyCoreIntegrationRetry();
+
         if (core.getConfig().getFixCollisionBamboo() || core.getConfig().getFixCollisionDripstone()) {
             try {
                 collisionFix = new CollisionFix(this, core.getConfig().getFixCollisionBamboo(), core.getConfig().getFixCollisionDripstone());
@@ -62,6 +73,8 @@ public final class CoordinateOffsetPaperPlugin extends JavaPlugin {
     }
 
     void onAllPluginsEnabled() {
+        completeAnarchyCoreIntegration();
+
         CoordinateOffsetCore.get().signalCompletedLoading();
 
         // bStats Metrics
@@ -72,6 +85,10 @@ public final class CoordinateOffsetPaperPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (playerConfigToggleWatcher != null) {
+            playerConfigToggleWatcher.stop();
+            playerConfigToggleWatcher = null;
+        }
         if (packetOffsetAdapter != null) {
             packetOffsetAdapter.onDisable();
             packetOffsetAdapter = null;
@@ -89,5 +106,24 @@ public final class CoordinateOffsetPaperPlugin extends JavaPlugin {
 
     @Nullable WorldBorderObfuscator getWorldBorderObfuscator() {
         return worldBorderObfuscator;
+    }
+
+    private void scheduleAnarchyCoreIntegrationRetry() {
+        Bukkit.getGlobalRegionScheduler().runDelayed(this, task -> completeAnarchyCoreIntegration(), 1L);
+        Bukkit.getGlobalRegionScheduler().runDelayed(this, task -> completeAnarchyCoreIntegration(), 20L);
+    }
+
+    private void completeAnarchyCoreIntegration() {
+        if (playerConfigIntegration == null || playerConfigToggleWatcher == null) {
+            return;
+        }
+        playerConfigIntegration.tryRegister();
+        if (playerConfigToggleWatcher.pollTaskIsInactive()) {
+            playerConfigToggleWatcher.start();
+        }
+        if (!anarchyCorePostRegisterSyncDone && playerConfigIntegration.getRandomizeCoordsOption() != null) {
+            anarchyCorePostRegisterSyncDone = true;
+            playerConfigToggleWatcher.syncAllOnlinePlayers();
+        }
     }
 }

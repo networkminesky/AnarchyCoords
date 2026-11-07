@@ -27,8 +27,10 @@ public class OffsetFactory {
         // Note for all Priority 0 checks: Be sure to update /offset commands which check for similar things.
         //  (e.g. /offset regenerate has a special response for bypasses by permissions or Bedrock)
 
-        // Priority 0: Permission-based bypass
-        if (canBypassByPermission(context.player())) {
+        boolean obfuscationForced = core.getObfuscationOverrideStore().isForced(context.player().getUuid());
+
+        // Priority 0: Permission-based bypass (não aplica se ofuscação forçada pela API / staff)
+        if (!obfuscationForced && canBypassByPermission(context.player())) {
             return new OffsetData(
                 Offset.ZERO,
                 new OffsetData.Source.PermissionBypass(),
@@ -37,10 +39,19 @@ public class OffsetFactory {
         }
 
         // Priority 0: Bedrock player/Geyser bypass
-        if (isBedrockPlayerAndLogOnJoin(context)) {
+        if (!obfuscationForced && isBedrockPlayerAndLogOnJoin(context)) {
             return new OffsetData(
                 Offset.ZERO,
                 new OffsetData.Source.BedrockBypass(),
+                context
+            );
+        }
+
+        // Priority 0: Per-player preference (e.g. AnarchyCore /config)
+        if (!core.getAdapter().shouldObfuscateCoordinates(context.player())) {
+            return new OffsetData(
+                Offset.ZERO,
+                new OffsetData.Source.PlayerPreferenceBypass(),
                 context
             );
         }
@@ -108,6 +119,7 @@ public class OffsetFactory {
                     case OffsetData.Source.Provider provider -> "Provider \"" + provider.provider().name + "\": ";
                     case OffsetData.Source.BedrockBypass ignored -> "";
                     case OffsetData.Source.PermissionBypass ignored -> "";
+                    case OffsetData.Source.PlayerPreferenceBypass ignored -> "";
                     case OffsetData.Source.PluginSet ignored -> "";
                 };
                 core.getLogger().info(prefix + "Scaling offset " + s + " by " + scale + " to match coordinate scale of world \"" + context.playerLocation().getWorld().getName() + "\"");

@@ -11,6 +11,7 @@ import com.jtprince.coordinateoffset.config.MessagesConfig;
 import com.jtprince.coordinateoffset.provider.ConstantOffsetProvider;
 import com.jtprince.coordinateoffset.provider.PermissionOffsetProvider;
 import com.jtprince.coordinateoffset.provider.RandomOffsetProvider;
+import com.jtprince.coordinateoffset.obfuscation.PlayerObfuscationOverrideStore;
 import com.jtprince.coordinateoffset.provider.ZeroAtLocationOffsetProvider;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,7 @@ public class CoordinateOffsetCore {
     private final OffsetProviderClassRegistry providerClassRegistry;
     private final OffsetHolder offsetHolder;
     private final OffsetCommandExecutor commandExecutor;
+    private final PlayerObfuscationOverrideStore obfuscationOverrideStore = new PlayerObfuscationOverrideStore();
 
     private final boolean isDebugEnabled;
     private boolean completedLoading = false;
@@ -123,6 +125,10 @@ public class CoordinateOffsetCore {
 
     public OffsetHolder getOffsetHolder() {
         return offsetHolder;
+    }
+
+    public PlayerObfuscationOverrideStore getObfuscationOverrideStore() {
+        return obfuscationOverrideStore;
     }
 
     public boolean isDebugEnabled() {

@@ -323,6 +323,7 @@ public class OffsetHolder {
         switch (offset.source()) {
             case OffsetData.Source.PermissionBypass ignored -> s.append("permission bypass");
             case OffsetData.Source.BedrockBypass ignored -> { return; /* Warning logged in OffsetCreator on Join only */ }
+            case OffsetData.Source.PlayerPreferenceBypass ignored -> s.append("player /config preference");
             case OffsetData.Source.Provider p -> {
                 s.append("provider \"").append(p.provider().name).append("\"");
                 if (p.overrideRuleIndex() != null) {
@@ -366,6 +367,7 @@ public class OffsetHolder {
         OffsetProvider affectedProvider = switch (currentOffset.source()) {
             case OffsetData.Source.BedrockBypass ignored -> null;
             case OffsetData.Source.PermissionBypass ignored -> null;
+            case OffsetData.Source.PlayerPreferenceBypass ignored -> null;
             case OffsetData.Source.Provider provider -> provider.provider();
             case OffsetData.Source.SetCommand setCommand -> setCommand.affectedProvider();
             case OffsetData.Source.PluginSet ignored -> null;

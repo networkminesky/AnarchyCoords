@@ -98,6 +98,27 @@ public interface CoordinateOffsetAPI {
     OffsetChange setOffset(OffsetPlayer player, Offset offset);
 
     /**
+     * Indica se a ofuscação de coordenadas está forçada para o jogador via API
+     * (independente da opção {@code Randomizar Coordenadas} no {@code /config} do AnarchyCore).
+     *
+     * <p>Seguro para qualquer thread.</p>
+     */
+    boolean isObfuscationForced(OffsetPlayer player);
+
+    /**
+     * Força ou libera ofuscação de coordenadas para um jogador e reaplica o offset no cliente se necessário.
+     * Use em fluxos de staff (vanish, TP para inspecionar bases, etc.) para ocultar coordenadas reais no F3
+     * mesmo quando o jogador não ativou randomização no {@code /config}.
+     *
+     * <p>Deve ser chamado na thread regional do jogador (Paper/Folia: {@code player.getScheduler().run(...)}).</p>
+     *
+     * @param player Jogador conectado
+     * @param forced {@code true} para ocultar coordenadas; {@code false} para voltar à preferência do {@code /config}
+     * @return Resultado da mudança de offset
+     */
+    OffsetChange setObfuscationForced(OffsetPlayer player, boolean forced);
+
+    /**
      * Get an {@link OffsetPlayer} instance for a player currently connected to the server by their UUID.
      *
      * @param playerUuid The UUID of a player currently connected to the server.

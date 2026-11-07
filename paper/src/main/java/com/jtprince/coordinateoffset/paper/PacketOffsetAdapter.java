@@ -9,6 +9,7 @@ import com.jtprince.coordinateoffset.offsetter.OffsetterRegistry;
 import com.jtprince.coordinateoffset.paper.adapter.PaperOffsetPlayer;
 import com.jtprince.coordinateoffset.provider.OffsetProvider;
 import com.jtprince.coordinateoffset.util.PartialStacktraceLogger;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
@@ -24,6 +25,7 @@ class PacketOffsetAdapter {
     private final Logger logger;
     private final PartialStacktraceLogger partialStacktraceLogger;
     @Nullable private Listener listener;
+    @Nullable private ScheduledTask stacktraceFlushTask;
 
     private final long stacktraceRateLimitMs = 2500; // 2.5 seconds
 
@@ -33,9 +35,13 @@ class PacketOffsetAdapter {
         this.logger = plugin.getLogger();
 
         this.partialStacktraceLogger = new PartialStacktraceLogger(logger);
-        Bukkit.getServer().getScheduler().runTaskTimer(coPlugin, () -> {
-            this.partialStacktraceLogger.flushRateLimits(stacktraceRateLimitMs);
-        }, stacktraceRateLimitMs / 50, stacktraceRateLimitMs / 50);
+        long periodTicks = Math.max(1L, stacktraceRateLimitMs / 50);
+        this.stacktraceFlushTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+            coPlugin,
+            task -> this.partialStacktraceLogger.flushRateLimits(stacktraceRateLimitMs),
+            periodTicks,
+            periodTicks
+        );
     }
 
     void registerAdapters() {
@@ -44,6 +50,10 @@ class PacketOffsetAdapter {
     }
 
     void onDisable() {
+        if (stacktraceFlushTask != null) {
+            stacktraceFlushTask.cancel();
+            stacktraceFlushTask = null;
+        }
         PacketEvents.getAPI().getEventManager().unregisterListener(listener);
         listener = null;
         this.partialStacktraceLogger.flushRateLimits(0);
@@ -172,6 +182,7 @@ class PacketOffsetAdapter {
             }
 
             core.getOffsetHolder().remove(playerUuid);
+            core.getObfuscationOverrideStore().clear(playerUuid);
             for (OffsetProvider provider : core.getProviderConfig().getAllOffsetProviderConfigs().values()) {
                 try {
                     provider.onPlayerDisconnect(playerUuid);

@@ -1,7 +1,10 @@
 package com.jtprince.coordinateoffset.paper.adapter;
 
+import com.jtprince.coordinateoffset.CoordinateOffsetCore;
 import com.jtprince.coordinateoffset.adapter.CoordinateOffsetAdapter;
+import com.jtprince.coordinateoffset.adapter.OffsetPlayer;
 import com.jtprince.coordinateoffset.paper.CoordinateOffsetPaperPlugin;
+import com.jtprince.coordinateoffset.paper.anarchy.AnarchyCorePlayerConfigIntegration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -15,11 +18,13 @@ import java.util.logging.Logger;
 @NullMarked
 public class PaperAdapter implements CoordinateOffsetAdapter {
     private final CoordinateOffsetPaperPlugin plugin;
+    private final AnarchyCorePlayerConfigIntegration playerConfigIntegration;
     private final PaperPlayerOffsetPersistence offsetPersistence;
     private final PaperOffsetSwapper offsetSwapper;
 
-    public PaperAdapter(CoordinateOffsetPaperPlugin plugin) {
+    public PaperAdapter(CoordinateOffsetPaperPlugin plugin, AnarchyCorePlayerConfigIntegration playerConfigIntegration) {
         this.plugin = plugin;
+        this.playerConfigIntegration = playerConfigIntegration;
         offsetPersistence = new PaperPlayerOffsetPersistence(plugin);
         offsetSwapper = new PaperOffsetSwapper(plugin);
         offsetSwapper.initialize();
@@ -73,6 +78,14 @@ public class PaperAdapter implements CoordinateOffsetAdapter {
     }
 
     private static boolean printedDHSupportWarning = false;
+    @Override
+    public boolean shouldObfuscateCoordinates(OffsetPlayer player) {
+        if (CoordinateOffsetCore.get().getObfuscationOverrideStore().isForced(player.getUuid())) {
+            return true;
+        }
+        return playerConfigIntegration.shouldRandomizeCoords(player);
+    }
+
     @Override
     public int getMinimumOffsetMultiple() {
         if (Bukkit.getPluginManager().getPlugin("DHSupport") != null) {

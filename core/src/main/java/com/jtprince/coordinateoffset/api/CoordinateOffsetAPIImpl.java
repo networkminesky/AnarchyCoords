@@ -55,6 +55,26 @@ public class CoordinateOffsetAPIImpl implements CoordinateOffsetAPI {
     }
 
     @Override
+    public boolean isObfuscationForced(OffsetPlayer player) {
+        return core.getObfuscationOverrideStore().isForced(player.getUuid());
+    }
+
+    @Override
+    public OffsetChange setObfuscationForced(OffsetPlayer player, boolean forced) {
+        CoordinateOffsetCore.get().getAdapter().assertMainThread("setObfuscationForced");
+
+        boolean previousForced = core.getObfuscationOverrideStore().isForced(player.getUuid());
+        core.getObfuscationOverrideStore().setForced(player.getUuid(), forced);
+
+        OffsetChange result = core.getOffsetHolder().generateNextOffset(
+            player, player.getLocation(), player.getLocation(), OffsetProviderContext.ProvideReason.PLUGIN_REGENERATE);
+        if (result.offsetChanged() || previousForced != forced) {
+            core.getAdapter().getOffsetSwapper().forceOffsetSwap(player);
+        }
+        return result;
+    }
+
+    @Override
     public @Nullable OffsetPlayer getPlayer(UUID playerUuid) {
         return core.getAdapter().getPlayer(playerUuid);
     }

@@ -9,6 +9,7 @@ allprojects {
         maven("https://repo.codemc.org/repository/maven-releases/") // PacketEvents
         maven("https://repo.codemc.org/repository/maven-snapshots/") // PacketEvents
         maven("https://repo.opencollab.dev/main/") // Geyser
+        maven("https://jitpack.io") // AnarchyCore
     }
 
     group = "com.jtprince.coordinateoffset"

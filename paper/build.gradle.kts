@@ -12,6 +12,7 @@ plugins {
 
 dependencies {
     paperweight.paperDevBundle(libs.versions.paper.api)
+    compileOnly("com.github.networkminesky:AnarchyCore:1.1.0")
     shadow(libs.packetevents.api)
 
     implementation(project(":api"))
@@ -33,7 +34,7 @@ tasks {
             "apiVersion" to libs.versions.paper.apiversion.get(),
         )
         placeholders.forEach { (k, v) -> inputs.property(k, v) } // ensure cache is invalidated after version bumps
-        files(listOf("paper-plugin.yml")) {
+        files(listOf("plugin.yml")) {
             expand(placeholders)
         }
     }
@@ -50,7 +51,6 @@ tasks {
         relocate("de.exlll.configlib", "${project.group}.lib.de.exlll.configlib")
         relocate("org.snakeyaml", "${project.group}.lib.org.snakeyaml")
         relocate("io.netty", "${project.group}.lib.io.netty")
-        exclude("plugin.yml") // ConfigLib's is included when shading, don't take
         minimize()
     }
 

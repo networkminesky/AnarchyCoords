@@ -8,6 +8,8 @@ import com.jtprince.coordinateoffset.adapter.OffsetPlayer;
 import com.jtprince.coordinateoffset.paper.adapter.PaperLocation;
 import com.jtprince.coordinateoffset.paper.adapter.PaperOffsetPlayer;
 import com.jtprince.coordinateoffset.paper.adapter.PaperOffsetSwapper;
+import com.jtprince.coordinateoffset.paper.anarchy.PlayerConfigToggleWatcher;
+import org.jspecify.annotations.Nullable;
 import com.jtprince.coordinateoffset.provider.OffsetProvider;
 import com.jtprince.coordinateoffset.provider.OffsetProviderContext;
 import org.bukkit.Bukkit;
@@ -29,11 +31,16 @@ class BukkitEventListener implements Listener {
     private final CoordinateOffsetPaperPlugin plugin;
     private final CoordinateOffsetCore core;
     private final WorldBorderObfuscator worldBorderObfuscator;
+    private @Nullable PlayerConfigToggleWatcher playerConfigToggleWatcher;
 
     BukkitEventListener(CoordinateOffsetPaperPlugin plugin, CoordinateOffsetCore core, WorldBorderObfuscator worldBorderObfuscator) {
         this.plugin = plugin;
         this.core = core;
         this.worldBorderObfuscator = worldBorderObfuscator;
+    }
+
+    public void setPlayerConfigToggleWatcher(@Nullable PlayerConfigToggleWatcher playerConfigToggleWatcher) {
+        this.playerConfigToggleWatcher = playerConfigToggleWatcher;
     }
 
     public void registerListeners() {
@@ -56,6 +63,9 @@ class BukkitEventListener implements Listener {
             new PaperLocation(event.getPlayer().getLocation()),
             OffsetProviderContext.ProvideReason.JOIN
         );
+        if (playerConfigToggleWatcher != null) {
+            playerConfigToggleWatcher.onPlayerJoined(event.getPlayer());
+        }
     }
 
     private final Map<UUID, Location> lastDeathLocation = new HashMap<>();
@@ -136,9 +146,9 @@ class BukkitEventListener implements Listener {
                     ((PaperOffsetSwapper) core.getAdapter().getOffsetSwapper())
                         .sendUnloadAllSentChunksPackets(event.getPlayer());
 
-                UUID playerId = event.getPlayer().getUniqueId();
-                Bukkit.getScheduler().runTaskLater(plugin, () -> { // on the next tick (post teleport)
-                    Player player = Bukkit.getPlayer(playerId);
+                Player teleportPlayer = event.getPlayer();
+                teleportPlayer.getScheduler().runDelayed(plugin, task -> { // on the next tick (post teleport)
+                    Player player = Bukkit.getPlayer(teleportPlayer.getUniqueId());
                     if (player == null) return;
 
                     // View position packet only seems necessary when teleporting within a chunk; otherwise the
@@ -148,7 +158,7 @@ class BukkitEventListener implements Listener {
 
                     ((PaperOffsetSwapper) core.getAdapter().getOffsetSwapper())
                         .refreshChunksAndEntities(player, chunksClosestFirst);
-                }, 1L);
+                }, null, 1L);
             }
         }
 
@@ -162,6 +172,10 @@ class BukkitEventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
+        core.getObfuscationOverrideStore().clear(event.getPlayer().getUniqueId());
+        if (playerConfigToggleWatcher != null) {
+            playerConfigToggleWatcher.forget(event.getPlayer());
+        }
         for (OffsetProvider provider : core.getProviderConfig().getAllOffsetProviderConfigs().values()) {
             try {
                 provider.onPlayerQuit(new PaperOffsetPlayer(event.getPlayer()));
